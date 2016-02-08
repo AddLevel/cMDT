@@ -43,7 +43,7 @@ You can use this module with a pull server, an SMB share or a local file reposit
 3. Create a source directory (Example: C:\Sources) If you use another driveletter and patch you need to edit the configuration file:
 (C:\Program Files\WindowsPowerShell\Modules\adl_MDT\1.0.0.0\Examples\Deploy_MDT_Server_ConfigurationData.psd1)
 4. Copy install.wim file from a Windows 10 media to C:\Sources and rename the file to install_1.0.0.0.wim
-5. Download PEExtraFiles_1.0.0.0.zip and Scripts_1.0.0.0.zip from https://github.com/AddLevel/cMDT/Sources/
+5. Download PEExtraFiles_1.0.0.0.zip and Scripts_1.0.0.0.zip from https://github.com/AddLevel/cMDT/tree/master/Sources
 6. Copy both PEExtraFiles_1.0.0.0.zip and Scripts_1.0.0.0.zip to C:\Sources
 7. Run Powershell ISE as Administrator and open the file: C:\Program Files\WindowsPowerShell\Modules\cMDT\1.0.0.0\Examples\Deploy_MDT_Server.ps1
 8. Press F5 to run the script. It will take approximately 30 min (Depending on internet capacity and virtualization hardware). The server will reboot once during this process.
