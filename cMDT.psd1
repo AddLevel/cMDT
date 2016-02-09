@@ -12,19 +12,22 @@ ModuleVersion = '1.0.0.0'
 GUID = '81624038-5e71-40f8-8905-b1a87afe22d7'
 
 # Author of this module
-Author = 'Addlevel'
+Author = 'Addlevel Automation Team'
 
 # Company or vendor of this module
 CompanyName = 'Addlevel'
 
 # Copyright statement for this module
-Copyright = '(c) 2016 Addlevel. All rights reserved.'
+Copyright = '2016 MIT License'
 
 # Description of the functionality provided by this module
-# Description = ''
+Description = 'A DSC Module for configuring Microsoft Deployment Toolkit (MDT)'
 
 # Minimum version of the Windows PowerShell engine required by this module
 PowerShellVersion = '5.0'
+
+CmdletsToExport   = "*"
+FunctionsToExport = "*"
 
 # Name of the Windows PowerShell host required by this module
 # PowerShellHostName = ''
