@@ -6,7 +6,7 @@ RootModule = 'cMDT.psm1'
 DscResourcesToExport = @('cMDTApplication','cMDTBootstrapIni','cMDTCustomize','cMDTCustomSettingsIni','cMDTDirectory','cMDTDriver','cMDTOperatingSystem','cMDTPersistentDrive','cMDTPreReqs','cMDTTaskSequence','cMDTUpdateBootImage','cWDSBootImage','cWDSConfiguration')
 
 # Version number of this module.
-ModuleVersion = '1.0.0.0'
+ModuleVersion = '1.0.0.1'
 
 # ID used to uniquely identify this module
 GUID = '81624038-5e71-40f8-8905-b1a87afe22d7'

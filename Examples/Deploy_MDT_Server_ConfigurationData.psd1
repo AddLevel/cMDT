@@ -113,6 +113,7 @@
                     DestinationFolder     = "Teamviewer"
                 }
             )
+            #>
 
             #Custom folder/files to add to the MDT
             CustomSettings   = @(
@@ -130,7 +131,7 @@
                     Protected  = $true
                 }
             )
-            #>
+
 
             #Custom settings and boot ini file management
             CustomizeIniFiles  = @(
