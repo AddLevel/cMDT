@@ -1,4 +1,8 @@
-﻿@{
+﻿# For instructions of how to edit this file and detailed usage of the module
+# open your prefered Internet browser and use the following link:
+# https://github.com/addlevel/cMDT
+
+@{
     AllNodes = 
     @(
         @{

@@ -242,8 +242,13 @@ Configuration DeployMDTServerContract
                 If ($_.key -eq "Path")       { $Path       = "$($Node.PSDriveName):$($_.value)" }
                 If ($_.key -eq "SourcePath")
                 {
-                    If ($weblink)            { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
-                    Else                     { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("/","\"))" }
+                    If (($_.value -like "*:*") -or ($_.value -like "*\\*"))
+                                             { $SourcePath = $_.value }
+                    Else
+                    {
+                        If ($weblink)        { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
+                        Else                 { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("/","\"))" }
+                    }
                 }
             }
 
@@ -325,8 +330,13 @@ Configuration DeployMDTServerContract
                 If ($_.key -eq "Path")       { $Path       = "$($Node.PSDriveName):$($_.value)" }
                 If ($_.key -eq "SourcePath")
                 {
-                    If ($weblink)            { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
-                    Else                     { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("/","\"))" }
+                    If (($_.value -like "*:*") -or ($_.value -like "*\\*"))
+                                             { $SourcePath = $_.value }
+                    Else
+                    {
+                        If ($weblink)        { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
+                        Else                 { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("/","\"))" }
+                    }
                 }
                 If ($_.key -eq "Comment")    { $Comment    = $_.value }
             }
@@ -373,8 +383,13 @@ Configuration DeployMDTServerContract
                 If ($_.key -eq "WorkingDirectory")      { $WorkingDirectory      = $_.value }
                 If ($_.key -eq "ApplicationSourcePath")
                 {
-                    If ($weblink)                       { $ApplicationSourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
-                    Else                                { $ApplicationSourcePath = "$($Node.SourcePath)$($_.value.Replace("/","\"))" }
+                    If (($_.value -like "*:*") -or ($_.value -like "*\\*"))
+                                                        { $SourcePath = $_.value }
+                    Else
+                    {
+                        If ($weblink)                   { $ApplicationSourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
+                        Else                            { $ApplicationSourcePath = "$($Node.SourcePath)$($_.value.Replace("/","\"))" }
+                    }
                 }
                 If ($_.key -eq "DestinationFolder")     { $DestinationFolder     = $_.value }
             }
@@ -417,10 +432,17 @@ Configuration DeployMDTServerContract
                 }
                 If ($_.key -eq "SourcePath")
                 {
-                    If ($weblink)            { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
-                    Else                     { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("/","\"))" }
+                    If (($_.value -like "*:*") -or ($_.value -like "*\\*"))
+                                             { $SourcePath = $_.value }
+                    Else
+                    {
+                        If ($weblink)        { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
+                        Else                 { $SourcePath = "$($Node.SourcePath)$($_.value.Replace("/","\"))" }
+                    }
                 }
             }
+
+            If ($Node.SourcePath -like "*/*") { $weblink = $true }
 
             cMDTCustomize $Name.Replace(' ','')
             {
@@ -567,29 +589,35 @@ KeyboardLocalePE=041d:0000041d
         ForEach ($Image in $Node.BootImage)   
         {
 
-            [string]$Ensure     = ""
-            [string]$Name       = ""
-            [string]$Version    = ""
-            [string]$Path       = ""
-            [string]$ImageName  = ""
+            [string]$Ensure                   = ""
+            [string]$Name                     = ""
+            [string]$Version                  = ""
+            [string]$Path                     = ""
+            [string]$ImageName                = ""
+            [string]$ExtraDirectory           = ""
+            [string]$BackgroundFile           = ""
+            [string]$LiteTouchWIMDescription  = ""
 
             $Image.GetEnumerator() | % {
-                If ($_.key -eq "Ensure")     { $Ensure     = $_.value }
-                If ($_.key -eq "Name")       { $Name       = $_.value }
-                If ($_.key -eq "Version")    { $Version    = $_.value }
-                If ($_.key -eq "Path")       { $Path       = "$($Node.PSDrivePath)$($_.value)" }
-                If ($_.key -eq "ImageName")  { $ImageName  = $_.value }
+                If ($_.key -eq "Ensure")                   { $Ensure                   = $_.value }
+                If ($_.key -eq "Name")                     { $Name                     = $_.value }
+                If ($_.key -eq "Version")                  { $Version                  = $_.value }
+                If ($_.key -eq "Path")                     { $Path                     = "$($Node.PSDrivePath)$($_.value)" }
+                If ($_.key -eq "ImageName")                { $ImageName                = $_.value }
+                If ($_.key -eq "ExtraDirectory")           { $ExtraDirectory           = $_.value }
+                If ($_.key -eq "BackgroundFile")           { $BackgroundFile           = $_.value }
+                If ($_.key -eq "LiteTouchWIMDescription")  { $LiteTouchWIMDescription  = $_.value }
             }
 
-            $ImageName  = "$($ImageName) v$($Version)"
-
             cMDTUpdateBootImage updateBootImage {
-                Version             = $Version
-                PSDeploymentShare   = $Node.PSDriveName
-                Force               = $true
-                Compress            = $true
-                DeploymentSharePath = $Node.PSDrivePath
-
+                Version                 = $Version
+                PSDeploymentShare       = $Node.PSDriveName
+                Force                   = $true
+                Compress                = $true
+                DeploymentSharePath     = $Node.PSDrivePath
+                ExtraDirectory          = $ExtraDirectory
+                BackgroundFile          = $BackgroundFile
+                LiteTouchWIMDescription = $LiteTouchWIMDescription
             }                    cWDSBootImage wdsBootImage {
                 Ensure    = $Ensure
                 Path      = $Path

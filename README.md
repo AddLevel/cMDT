@@ -8,7 +8,7 @@ cMDT is a Powershell Module to help automize MDT server deployment and configura
   - Lifecycle management for all components
 
 ### Version
-1.0.0.0
+1.0.0.2
 
 ### Tech
 
@@ -19,12 +19,12 @@ cMDT uses a number of components and open resource kit modules. The following ar
 * [PowerShellAccessControl] - DSC Module available from GitHub
 
 The following prerequisites can automatically be downloaded with the cMDT Module:
-* [MicrosoftDeploymentToolkit2013_x64] - Microsoft Deployment Toolkit (MDT) 2013 Update 1 (6.3.8298.1000)
+* [MicrosoftDeploymentToolkit2013_x64] - Microsoft Deployment Toolkit (MDT) 2013 Update 1 (6.3.8330.1000)
 * [adksetup] - Windows Assessment and Deployment Kit (10.1.10586.0)
 
 Note: The MDT and ADK versions must compatible for the DSC modules to work.
 
-And of course the cMDT Module itself which is open source with a [public repository]
+And of course the cMDT Module itself which is open source with a [public repository][dill]
  on GitHub or from the Powershell Gallery.
 
 ### Installation
@@ -43,10 +43,9 @@ You can use this module with a pull server, an SMB share or a local file reposit
 3. Create a source directory (Example: C:\Sources) If you use another driveletter and patch you need to edit the configuration file:
 (C:\Program Files\WindowsPowerShell\Modules\adl_MDT\1.0.0.0\Examples\Deploy_MDT_Server_ConfigurationData.psd1)
 4. Copy install.wim file from a Windows 10 media to C:\Sources and rename the file to install_1.0.0.0.wim
-5. Download PEExtraFiles_1.0.0.0.zip and Scripts_1.0.0.0.zip from https://github.com/AddLevel/cMDT/tree/master/Sources
-6. Copy both PEExtraFiles_1.0.0.0.zip and Scripts_1.0.0.0.zip to C:\Sources
-7. Run Powershell ISE as Administrator and open the file: C:\Program Files\WindowsPowerShell\Modules\cMDT\1.0.0.0\Examples\Deploy_MDT_Server.ps1
-8. Press F5 to run the script. It will take approximately 30 min (Depending on internet capacity and virtualization hardware). The server will reboot once during this process.
+5. Copy the Zip-files PEExtraFiles_1.0.0.0.zip and Scripts_1.0.0.0.zip from the Powershell cMDT Module install directory (C:\Program Files\WindowsPowerShell\Modules\adl_MDT\1.0.0.0\Sources) to the C:\Sources directory. 
+5. Run Powershell ISE as Administrator and open the file: C:\Program Files\WindowsPowerShell\Modules\cMDT\1.0.0.0\Examples\Deploy_MDT_Server.ps1
+6. Press F5 to run the script. It will take approximately 30 min (Depending on internet capacity and virtualization hardware). The server will reboot ones during this process.
 
 ### DscResources
 
@@ -65,7 +64,7 @@ The cMDT Module contain the following DscResources:
 * cMDTUpdateBootImage
 * cWDSBootImage
 * cWDSConfiguration
-
+ 
 #### cMDTApplication
 cMDTApplication is a DscResource that enables download, import of and lifecycle management of applications in MDT. Applications can be updated and retrieved from a pull server according to Desired State Configuration principles.
 
@@ -131,7 +130,7 @@ The DscResource will manage the content of this file according to the following 
     * Verify content of the local BootStrap.ini file with the configuration in the contract
     * Apply changes if necessary
 * If absent:
-    *  If absent BootStrap.ini will ve reverted to default state
+    *  If absent BootStrap.ini will ve reverted to default state 
 
 Desired State Configuration job example:
 ```sh
@@ -214,7 +213,7 @@ The DscResource will manage the content of this file according to the following 
     * Verify content of the local BootStrap.ini file with the configuration in the contract
     * Apply changes if necessary
 * If absent:
-    * If absent CustomSettings.ini will ve reverted to default state
+    * If absent CustomSettings.ini will ve reverted to default state 
 
 Desired State Configuration job example:
 ```sh
@@ -371,7 +370,7 @@ cMDTOperatingSystem is a DscResource that enables download, import of and lifecy
 
 Available parameters with example:
 * [Ensure] - Present/Absent
-* [Version] - Version number
+* [Version] - Version number (optional)
 * [Name] - Name
 * [Path] - MDT path
 * [SourcePath] - Web link, SMB or local path
@@ -382,7 +381,8 @@ Available parameters with example:
 The DscResource will import Operating Systems according to the following principle:
 * Verify status present or absent
 * If present:
-    * Append version number to the SourcePath together with a .wim extension
+    * If version is defined, appends version number to the SourcePath together with a .wim extension
+    * If version is not defined, download checksum version information from the pull server. The checksum file needs to be named as image file name and ".version"; ex: REFW10X64.version.
     * Verify if the Operating System already exist in MDT, and if determine version
     * If the Operating System does not exist or version number do not matched the Operating System WIM file will be downloaded
     * If the Operating System does not exist the WIM file will be imported in to the MDT, if the Operating System do exist and upgrade mode is determined the WIM file will be copied in to the appropriate MDT directory path
@@ -564,9 +564,11 @@ Or visit us at: http://www.addlevel.se/
 License
 ----
 
-MIT
+**Free usage!**
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
 
    [github]: <https://github.com/addlevel>
+
+

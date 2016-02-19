@@ -676,7 +676,7 @@ class cMDTOperatingSystem
 {
 
     [DscProperty(Mandatory)]
-    [Ensure] $Ensure
+    [Ensure]$Ensure
 
     [DscProperty(Mandatory)]
     [string]$Version
@@ -702,20 +702,44 @@ class cMDTOperatingSystem
     [void] Set()
     {
 
+        [bool]$Hash = $False
+        If (-not ($this.version))
+        { $Hash = $True }
+
         [string]$separator = ""
         If ($this.SourcePath -like "*/*")
         { $separator = "/" }
         Else
         { $separator = "\" }
 
-        $filename = "$($this.SourcePath.Split($separator)[-1])_$($this.Version).wim"
+        $filename = $null
+        If ($Hash)
+        { $filename = "$($this.SourcePath.Split($separator)[-1]).wim" }
+        Else
+        { $filename = "$($this.SourcePath.Split($separator)[-1])_$($this.Version).wim" }
+        
         $foldername = $filename.Replace(".$($filename.Split(".")[-1])","")
 
         [bool]$download = $True
         If (($separator -eq "/") -Or ($this.SourcePath.Substring(0,2) -eq "\\"))
-        { $targetdownload = "$($this.TempLocation)\$($this.SourcePath.Split($separator)[-1]).wim" }
+        {
+            $targetdownload = "$($this.TempLocation)\$($this.SourcePath.Split($separator)[-1]).wim"
+            $targetdownloadref = "$($this.TempLocation)\$($this.SourcePath.Split($separator)[-1]).version"
+        }
         Else
-        { $targetdownload = "$($this.SourcePath)_$($this.Version).wim" ; $download = $False }
+        {
+            If ($Hash)
+            {
+                $targetdownload = "$($this.SourcePath).wim"
+                $targetdownloadref = "$($this.SourcePath).version"
+            }
+            Else
+            {
+                $targetdownload = "$($this.SourcePath)_$($this.Version).wim"
+                $targetdownloadref = "$($this.SourcePath)_$($this.Version).version"
+            }
+            $download = $False
+        }
 
         $referencefile = "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).version"
         $extractfolder = "$($this.TempLocation)\$($foldername)"
@@ -727,43 +751,102 @@ class cMDTOperatingSystem
 
             if ($present)
             {
+                
+                If ($Hash)
+                {
+                    If ($download)
+                        {
+                            Invoke-WebDownload -Source "$($this.SourcePath).wim" -Target $targetdownload
+                            Invoke-WebDownload -Source "$($this.SourcePath).version" -Target $targetdownloadref
+                        }
+                    }
+                Else
+                {
+                    If ($download)
+                    {
+                        Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).wim" -Target $targetdownload
+                    }
+                }
 
-                If ($download) { Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).wim" -Target $targetdownload }
                 Invoke-RemovePath -Path "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim" -Verbose
 
-                $oldname = $targetdownload
-                $newname = $targetdownload.Replace("_$($this.Version)","")
+                $oldname = $null
+                $newname = $null
+                If (-not ($Hash))
+                {
+                    $oldname = $targetdownload
+                    $newname = $targetdownload.Replace("_$($this.Version)","")
+                }
+
                 If ($download)
                 {
                     Copy-Item $targetdownload -Destination "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim" -Force -Verbose
                 }
                 Else
                 {
-                    Rename-Item -Path $oldname -NewName $newname -Verbose:$False
-                    Copy-Item $newname -Destination "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim" -Force -Verbose
-                    Rename-Item -Path $newname -NewName $oldname -Verbose:$False
+                    If (-not ($Hash)) { Rename-Item -Path $oldname -NewName $newname -ErrorAction SilentlyContinue -Verbose:$False }
+                    If ($Hash)
+                    {
+                        Copy-Item $targetdownload -Destination "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim" -Force -Verbose
+                    }
+                    Else
+                    {
+                        Copy-Item $newname -Destination "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim" -Force -Verbose
+                    }
+                    If (-not ($Hash)) { Rename-Item -Path $newname -NewName $oldname -ErrorAction SilentlyContinue -Verbose:$False }
+                }
+
+                If ($Hash)
+                {
+                    $this.version = Get-Content -Path $targetdownloadref
                 }
 
                 Set-Content -Path $referencefile -Value "$($this.Version)" -Verbose:$false
             }
             else
             {
+                
+                $oldname = $null
+                $newname = $null
+                If (-not ($Hash))
+                {
+                    $oldname = $targetdownload
+                    $newname = $targetdownload.Replace("_$($this.Version)","")
+                }
 
-                $oldname = $targetdownload
-                $newname = $targetdownload.Replace("_$($this.Version)","")
                 If ($download)
                 {
-                    Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).wim" -Target $targetdownload
+                    If ($Hash)
+                    {
+                        Invoke-WebDownload -Source "$($this.SourcePath).wim" -Target $targetdownload
+                        Invoke-WebDownload -Source "$($this.SourcePath).version" -Target $targetdownloadref
+                    }
+                    Else
+                    {
+                        Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).wim" -Target $targetdownload
+                    }
                     $this.ImportOperatingSystem($targetdownload)
                 }
                 Else
                 {
-                    Rename-Item -Path $oldname -NewName $newname -Verbose:$False
-                    $this.ImportOperatingSystem($newname)
-                    Rename-Item -Path $newname -NewName $oldname -Verbose:$False
+                    If (-not ($Hash)) { Rename-Item -Path $oldname -NewName $newname -ErrorAction SilentlyContinue -Verbose:$False }
+                    If ($Hash)
+                    {
+                        $this.ImportOperatingSystem($targetdownload)
+                    }
+                    Else
+                    {
+                        $this.ImportOperatingSystem($newname)
+                    }
+                    If (-not ($Hash)) { Rename-Item -Path $newname -NewName $oldname -ErrorAction SilentlyContinue -Verbose:$False }
                 }
 
                 New-ReferenceFile -Path $referencefile -PSDriveName $this.PSDriveName -PSDrivePath $this.PSDrivePath
+
+                If ($Hash)
+                {
+                    $this.version = Get-Content -Path $targetdownloadref
+                }
 
                 Set-Content -Path $referencefile -Value "$($this.Version)"
             }
@@ -773,6 +856,7 @@ class cMDTOperatingSystem
 
             Invoke-RemovePath -Path "$($this.PSDrivePath)\Operating Systems\$($this.Name)" -PSDriveName $this.PSDriveName -PSDrivePath $this.PSDrivePath -Verbose
         }
+
     }
 
     [bool] Test()
@@ -783,6 +867,18 @@ class cMDTOperatingSystem
         { $separator = "/" }
         Else
         { $separator = "\" }
+
+        If (-not ($this.version))
+        {
+            [bool]$download = $True
+            If (($separator -eq "/") -Or ($this.SourcePath.Substring(0,2) -eq "\\"))
+            { $targetdownloadref = "$($this.TempLocation)\$($this.SourcePath.Split($separator)[-1]).version" }
+            Else
+            { $targetdownloadref = "$($this.SourcePath).version" ; $download = $False }
+
+            If ($download) { Invoke-WebDownload -Source "$($this.SourcePath).version" -Target $targetdownloadref }
+            $this.version = Get-Content -Path $targetdownloadref
+        }
 
         $present = Invoke-TestPath -Path "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim"
 
