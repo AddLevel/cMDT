@@ -81,16 +81,24 @@ Configuration DeployMDTServerContract
             ReturnCode = 0
         }
 
+        Service WDSServer {
+            Name        = "WDSServer"
+            State       = "Running"
+            StartUpType = "Automatic"
+            DependsOn   = "[WindowsFeature]WDS"
+        }
+
         cMDTDirectory TempFolder
         {
-            Ensure = "Present"
-            Name   = $Node.TempLocation.Replace("$($Node.TempLocation.Substring(0,2))\","")
-            Path   = $Node.TempLocation.Substring(0,2)
+            Ensure    = "Present"
+            Name      = $Node.TempLocation.Replace("$($Node.TempLocation.Substring(0,2))\","")
+            Path      = $Node.TempLocation.Substring(0,2)
         }        cMDTDirectory DeploymentFolder
         {
-            Ensure = "Present"
-            Name   = $Node.PSDrivePath.Replace("$($Node.PSDrivePath.Substring(0,2))\","")
-            Path   = $Node.PSDrivePath.Substring(0,2)
+            Ensure    = "Present"
+            Name      = $Node.PSDrivePath.Replace("$($Node.PSDrivePath.Substring(0,2))\","")
+            Path      = $Node.PSDrivePath.Substring(0,2)
+            DependsOn = "[Package]MDT"
         }
 
         xSmbShare FolderDeploymentShare
@@ -100,6 +108,7 @@ Configuration DeployMDTServerContract
             Path                  = $Node.PSDrivePath
             FullAccess            = "$env:COMPUTERNAME\$($Node.MDTLocalAccount)"
             FolderEnumerationMode = "AccessBased"
+            DependsOn             = "[cMDTDirectory]DeploymentFolder"
         }
 
         cAccessControlEntry AssignPermissions
@@ -109,6 +118,7 @@ Configuration DeployMDTServerContract
             AceType    = "AccessAllowed"
             Principal  = "$env:COMPUTERNAME\$($Node.MDTLocalAccount)"
             AccessMask = [System.Security.AccessControl.FileSystemRights]::FullControl
+            DependsOn  = "[cMDTDirectory]DeploymentFolder"
         }
 
         cMDTPersistentDrive DeploymentPSDrive
@@ -118,6 +128,7 @@ Configuration DeployMDTServerContract
             Path        = $Node.PSDrivePath
             Description = $Node.PSDrivePath.Replace("$($Node.PSDrivePath.Substring(0,2))\","")
             NetworkPath = "\\$($env:COMPUTERNAME)\$($Node.PSDriveShareName)"
+            DependsOn   = "[cMDTDirectory]DeploymentFolder"
         }
 
         ForEach ($OSDirectory in $Node.OSDirectories)   
@@ -137,6 +148,7 @@ Configuration DeployMDTServerContract
                 Path        = "$($Node.PSDriveName):\Operating Systems"
                 PSDriveName = $Node.PSDriveName
                 PSDrivePath = $Node.PSDrivePath
+                DependsOn   = "[cMDTDirectory]DeploymentFolder"
             }
 
             cMDTDirectory "OOB$($OSVersion.Replace(' ',''))"
@@ -146,6 +158,7 @@ Configuration DeployMDTServerContract
                 Path        = "$($Node.PSDriveName):\Out-of-Box Drivers"
                 PSDriveName = $Node.PSDriveName
                 PSDrivePath = $Node.PSDrivePath
+                DependsOn   = "[cMDTDirectory]DeploymentFolder"
             }
 
             cMDTDirectory "TS$($OSVersion.Replace(' ',''))"
@@ -155,6 +168,7 @@ Configuration DeployMDTServerContract
                 Path        = "$($Node.PSDriveName):\Task Sequences"
                 PSDriveName = $Node.PSDriveName
                 PSDrivePath = $Node.PSDrivePath
+                DependsOn   = "[cMDTDirectory]DeploymentFolder"
             }
 
             
@@ -177,41 +191,58 @@ Configuration DeployMDTServerContract
                     Path        = "$($Node.PSDriveName):\Out-of-Box Drivers\$OSVersion x64"
                     PSDriveName = $Node.PSDriveName
                     PSDrivePath = $Node.PSDrivePath
+                    DependsOn   = "[cMDTDirectory]OOB$($OSVersion.Replace(' ',''))"
                 }
             }
 
         }
-        
-        cMDTDirectory ApplicationsRef {
-            Ensure      = "Present"
-            Name        = "Reference Applications"
-            Path        = "$($Node.PSDriveName):\Applications"
-            PSDriveName = $Node.PSDriveName
-            PSDrivePath = $Node.PSDrivePath
-        }
 
-        cMDTDirectory ApplicationsCore {
-            Ensure      = "Present"
-            Name        = "Core Applications"
-            Path        = "$($Node.PSDriveName):\Applications"
-            PSDriveName = $Node.PSDriveName
-            PSDrivePath = $Node.PSDrivePath
-        }
+        ForEach ($CurrentApplicationFolder in $Node.ApplicationFolderStructure)
+        {
 
-        cMDTDirectory ApplicationsDrivers {
-            Ensure      = "Present"
-            Name        = "Drivers"
-            Path        = "$($Node.PSDriveName):\Applications"
-            PSDriveName = $Node.PSDriveName
-            PSDrivePath = $Node.PSDrivePath
-        }
+            [string]$EnsureApplicationFolder = ""
+            [string]$ApplicationFolder       = ""
+            $CurrentApplicationFolder.GetEnumerator() | % {
+                If ($_.key -eq "Ensure") { $EnsureApplicationFolder = $_.value }
+                If ($_.key -eq "Folder") { $ApplicationFolder       = $_.value }
+            }
 
-        cMDTDirectory ApplicationsOptional {
-            Ensure      = "Present"
-            Name        = "Optional"
-            Path        = "$($Node.PSDriveName):\Applications"
-            PSDriveName = $Node.PSDriveName
-            PSDrivePath = $Node.PSDrivePath
+            If ($Ensure -eq "Absent")    { $EnsureApplicationFolder = "Absent" }
+
+            cMDTDirectory "AF$($ApplicationFolder.Replace(' ',''))"
+            {
+                Ensure      = $EnsureApplicationFolder
+                Name        = $ApplicationFolder
+                Path        = "$($Node.PSDriveName):\Applications"
+                PSDriveName = $Node.PSDriveName
+                PSDrivePath = $Node.PSDrivePath
+                DependsOn   = "[cMDTDirectory]DeploymentFolder"
+            }
+
+            ForEach ($CurrentApplicationSubFolder in $CurrentApplicationFolder.SubFolders)
+            {
+
+                [string]$EnsureApplicationSubFolder = ""
+                [string]$ApplicationSubFolder       = ""
+                $CurrentApplicationSubFolder.GetEnumerator() | % {
+                    If ($_.key -eq "Ensure") {    $EnsureApplicationSubFolder = $_.value }
+                    If ($_.key -eq "SubFolder") { $ApplicationSubFolder       = $_.value }
+                }
+
+                If ($Ensure -eq "Absent")    { $EnsureApplicationSubFolder = "Absent" }
+
+                cMDTDirectory "ASF$($ApplicationSubFolder.Replace(' ',''))"
+                {
+                    Ensure      = $EnsureApplicationSubFolder
+                    Name        = $ApplicationSubFolder
+                    Path        = "$($Node.PSDriveName):\Applications\$ApplicationFolder"
+                    PSDriveName = $Node.PSDriveName
+                    PSDrivePath = $Node.PSDrivePath
+                    DependsOn   = "[cMDTDirectory]DeploymentFolder"
+                }
+
+            }
+
         }
 
         ForEach ($SelectionProfile in $Node.SelectionProfiles)   
@@ -223,6 +254,7 @@ Configuration DeployMDTServerContract
                 Path        = "$($Node.PSDriveName):\Selection Profiles"
                 PSDriveName = $Node.PSDriveName
                 PSDrivePath = $Node.PSDrivePath
+                DependsOn   = "[cMDTDirectory]DeploymentFolder"
             }
         }
 
@@ -262,6 +294,7 @@ Configuration DeployMDTServerContract
                 PSDriveName  = $Node.PSDriveName
                 PSDrivePath  = $Node.PSDrivePath
                 TempLocation = $Node.TempLocation
+                DependsOn   = "[cMDTDirectory]DeploymentFolder"
             }
         }
 
@@ -295,6 +328,7 @@ Configuration DeployMDTServerContract
                     ID          = $ID
                     PSDriveName = $Node.PSDriveName
                     PSDrivePath = $Node.PSDrivePath
+                    DependsOn   = "[cMDTDirectory]DeploymentFolder"
                 }
             }
             Else
@@ -308,6 +342,7 @@ Configuration DeployMDTServerContract
                     ID                  = $ID
                     PSDriveName         = $Node.PSDriveName
                     PSDrivePath         = $Node.PSDrivePath
+                    DependsOn   = "[cMDTDirectory]DeploymentFolder"
                 }
 
             }
@@ -353,6 +388,7 @@ Configuration DeployMDTServerContract
                 PSDriveName  = $Node.PSDriveName
                 PSDrivePath  = $Node.PSDrivePath
                 TempLocation = $Node.TempLocation
+                DependsOn   = "[cMDTDirectory]DeploymentFolder"
             }
         }
 
@@ -384,7 +420,7 @@ Configuration DeployMDTServerContract
                 If ($_.key -eq "ApplicationSourcePath")
                 {
                     If (($_.value -like "*:*") -or ($_.value -like "*\\*"))
-                                                        { $SourcePath = $_.value }
+                                                        { $ApplicationSourcePath = $_.value }
                     Else
                     {
                         If ($weblink)                   { $ApplicationSourcePath = "$($Node.SourcePath)$($_.value.Replace("\","/"))" }
@@ -411,6 +447,7 @@ Configuration DeployMDTServerContract
                 PSDriveName           = $Node.PSDriveName
                 PSDrivePath           = $Node.PSDrivePath
                 TempLocation          = $Node.TempLocation
+                DependsOn             = "[cMDTDirectory]DeploymentFolder"
             }
         }
 
@@ -452,41 +489,118 @@ Configuration DeployMDTServerContract
                 SourcePath   = $SourcePath
                 Path         = $Node.PSDrivePath
                 TempLocation = $Node.TempLocation
-                Protected    = $Protected
+                #Protected    = $Protected
+                DependsOn    = "[cMDTDirectory]DeploymentFolder"
             }
         }
 
         ForEach ($IniFile in $Node.CustomizeIniFiles)   
         {
 
-            [string]$Ensure     = ""
-            [string]$Name       = ""
-            [string]$Path       = ""
-            [string]$DeployRoot = ""
-            [string]$JoinDomain = ""
-            [string]$DomainAdmin = ""
-            [string]$DomainAdminDomain = ""
-            [string]$DomainAdminPassword = ""
-            [string]$MachineObjectOU = ""
+            [string]$Ensure               = ""
+            [string]$Name                 = ""
+            [string]$Path                 = ""
+            [string]$HomePage             = ""
+            [string]$SkipAdminPassword    = ""
+            [string]$SkipApplications     = ""
+            [string]$SkipBitLocker        = ""
+            [string]$SkipCapture          = ""
+            [string]$SkipComputerBackup   = ""
+            [string]$SkipComputerName     = ""
+            [string]$SkipDomainMembership = ""
+            [string]$SkipFinalSummary     = ""
+            [string]$SkipLocaleSelection  = ""
+            [string]$SkipPackageDisplay   = ""
+            [string]$SkipProductKey       = ""
+            [string]$SkipRoles            = ""
+            [string]$SkipSummary          = ""
+            [string]$SkipTimeZone         = ""
+            [string]$SkipUserData         = ""
+            [string]$SkipTaskSequence     = ""
+            [string]$JoinDomain           = ""
+            [string]$DomainAdmin          = ""
+            [string]$DomainAdminDomain    = ""
+            [string]$DomainAdminPassword  = ""
+            [string]$MachineObjectOU      = ""
+            [string]$TimeZoneName         = ""
+            [string]$WSUSServer           = ""
+            [string]$UserLocale           = ""
+            [string]$KeyboardLocale       = ""
+            [string]$UILanguage           = ""
+            [string]$DeployRoot           = ""
+            [string]$KeyboardLocalePE     = ""
 
             $IniFile.GetEnumerator() | % {
-                If ($_.key -eq "Ensure")              { $Ensure              = $_.value }
-                If ($_.key -eq "Name")                { $Name                = $_.value }
-                If ($_.key -eq "Path")                { $Path                = "$($Node.PSDrivePath)$($_.value)" }
-                If ($_.key -eq "DeployRoot")          { $DeployRoot          = "$($Node.SourcePath)$($_.value)" }
-                If ($_.key -eq "JoinDomain")          { $JoinDomain          = $_.value }
-                If ($_.key -eq "DomainAdmin")         { $DomainAdmin         = $_.value }
-                If ($_.key -eq "DomainAdminDomain")   { $DomainAdminDomain   = $_.value }
-                If ($_.key -eq "DomainAdminPassword") { $DomainAdminPassword = $_.value }
-                If ($_.key -eq "MachineObjectOU")     { $MachineObjectOU     = $_.value }
+                If ($_.key -eq "Ensure")               { $Ensure               = $_.value }
+                If ($_.key -eq "Name")                 { $Name                 = $_.value }
+                If ($_.key -eq "Path")                 { $Path                 = "$($Node.PSDrivePath)$($_.value)" }                                                
+                If ($_.key -eq "HomePage")             { $HomePage             = $_.value }
+                If ($_.key -eq "SkipAdminPassword")    { $SkipAdminPassword    = $_.value }
+                If ($_.key -eq "SkipApplications")     { $SkipApplications     = $_.value }
+                If ($_.key -eq "SkipBitLocker")        { $SkipBitLocker        = $_.value }
+                If ($_.key -eq "SkipCapture")          { $SkipCapture          = $_.value }
+                If ($_.key -eq "SkipComputerBackup")   { $SkipComputerBackup   = $_.value }
+                If ($_.key -eq "SkipComputerName")     { $SkipComputerName     = $_.value }
+                If ($_.key -eq "SkipDomainMembership") { $SkipDomainMembership = $_.value }
+                If ($_.key -eq "SkipFinalSummary")     { $SkipFinalSummary     = $_.value }
+                If ($_.key -eq "SkipLocaleSelection")  { $SkipLocaleSelection  = $_.value }
+                If ($_.key -eq "SkipPackageDisplay")   { $SkipPackageDisplay   = $_.value }
+                If ($_.key -eq "SkipProductKey")       { $SkipProductKey       = $_.value }
+                If ($_.key -eq "SkipRoles")            { $SkipRoles            = $_.value }
+                If ($_.key -eq "SkipSummary")          { $SkipSummary          = $_.value }
+                If ($_.key -eq "SkipTimeZone")         { $SkipTimeZone         = $_.value }
+                If ($_.key -eq "SkipUserData")         { $SkipUserData         = $_.value }
+                If ($_.key -eq "SkipTaskSequence")     { $SkipTaskSequence     = $_.value }                                                      
+                If ($_.key -eq "JoinDomain")           { $JoinDomain           = $_.value }
+                If ($_.key -eq "DomainAdmin")          { $DomainAdmin          = $_.value }
+                If ($_.key -eq "DomainAdminDomain")    { $DomainAdminDomain    = $_.value }
+                If ($_.key -eq "DomainAdminPassword")  { $DomainAdminPassword  = $_.value }
+                If ($_.key -eq "MachineObjectOU")      { $MachineObjectOU      = $_.value }
+                If ($_.key -eq "TimeZoneName")         { $TimeZoneName         = $_.value }
+                If ($_.key -eq "WSUSServer")           { $WSUSServer           = $_.value }
+                If ($_.key -eq "UserLocale")           { $UserLocale           = $_.value }
+                If ($_.key -eq "KeyboardLocale")       { $KeyboardLocale       = $_.value }
+                If ($_.key -eq "UILanguage")           { $UILanguage           = $_.value }
+                If ($_.key -eq "DeployRoot")           { $DeployRoot           = "$($Node.SourcePath)$($_.value)" }
+                If ($_.key -eq "KeyboardLocalePE")     { $KeyboardLocalePE     = $_.value }
             }
+
+            If ($HomePage)             { $HomePage             = "Home_Page=$($HomePage)" }                        Else { $HomePage             = ";Home_Page=" }
+            If ($SkipAdminPassword)    { $SkipAdminPassword    = "SkipAdminPassword=$($SkipAdminPassword)" }       Else { $SkipAdminPassword    = ";SkipAdminPassword=" }
+            If ($SkipApplications)     { $SkipApplications     = "SkipApplications=$($SkipApplications)" }         Else { $SkipApplications     = ";SkipApplications=" }
+            If ($SkipBitLocker)        { $SkipBitLocker        = "SkipBitLocker=$($SkipBitLocker)" }               Else { $SkipBitLocker        = ";SkipBitLocker=" }
+            If ($SkipCapture)          { $SkipCapture          = "SkipCapture=$($SkipCapture)" }                   Else { $SkipCapture          = ";SkipCapture=" }
+            If ($SkipComputerBackup)   { $SkipComputerBackup   = "SkipComputerBackup=$($SkipComputerBackup)" }     Else { $SkipComputerBackup   = ";SkipComputerBackup=" }
+            If ($SkipComputerName)     { $SkipComputerName     = "SkipComputerName=$($SkipComputerName)" }         Else { $SkipComputerName     = ";SkipComputerName=" }
+            If ($SkipDomainMembership) { $SkipDomainMembership = "SkipDomainMembership=$($SkipDomainMembership)" } Else { $SkipDomainMembership = ";SkipDomainMembership=" }
+            If ($SkipFinalSummary)     { $SkipFinalSummary     = "SkipFinalSummary=$($SkipFinalSummary)" }         Else { $SkipFinalSummary     = ";SkipFinalSummary=" }
+            If ($SkipLocaleSelection)  { $SkipLocaleSelection  = "SkipLocaleSelection=$($SkipLocaleSelection)" }   Else { $SkipLocaleSelection  = ";SkipLocaleSelection=" }
+            If ($SkipPackageDisplay)   { $SkipPackageDisplay   = "SkipPackageDisplay=$($SkipPackageDisplay)" }     Else { $SkipPackageDisplay   = ";SkipPackageDisplay=" }
+            If ($SkipProductKey)       { $SkipProductKey       = "SkipProductKey=$($SkipProductKey)" }             Else { $SkipProductKey       = ";SkipProductKey=" }
+            If ($SkipRoles)            { $SkipRoles            = "SkipRoles=$($SkipRoles)" }                       Else { $SkipRoles            = ";SkipRoles=" }
+            If ($SkipSummary)          { $SkipSummary          = "SkipSummary=$($SkipSummary)" }                   Else { $SkipSummary          = ";SkipSummary=" }
+            If ($SkipTimeZone)         { $SkipTimeZone         = "SkipTimeZone=$($SkipTimeZone)" }                 Else { $SkipTimeZone         = ";SkipTimeZone=" }
+            If ($SkipUserData)         { $SkipUserData         = "SkipUserData=$($SkipUserData)" }                 Else { $SkipUserData         = ";SkipUserData=" }
+            If ($SkipTaskSequence)     { $SkipTaskSequence     = "SkipTaskSequence=$($SkipTaskSequence)" }         Else { $SkipTaskSequence     = ";SkipTaskSequence=" }
+            If ($JoinDomain)           { $JoinDomain           = "JoinDomain=$($JoinDomain)" }                     Else { $JoinDomain           = ";JoinDomain=" }
+            If ($DomainAdmin)          { $DomainAdmin          = "DomainAdmin=$($DomainAdmin)" }                   Else { $DomainAdmin          = ";DomainAdmin=" }
+            If ($DomainAdminDomain)    { $DomainAdminDomain    = "DomainAdminDomain=$($DomainAdminDomain)" }       Else { $DomainAdminDomain    = ";DomainAdminDomain=" }
+            If ($DomainAdminPassword)  { $DomainAdminPassword  = "DomainAdminPassword=$($DomainAdminPassword)" }   Else { $DomainAdminPassword  = ";DomainAdminPassword=" }
+            If ($MachineObjectOU)      { $MachineObjectOU      = "MachineObjectOU=$($MachineObjectOU)" }           Else { $MachineObjectOU      = ";MachineObjectOU=" }
+            If ($TimeZoneName)         { $TimeZoneName         = "TimeZoneName=$($TimeZoneName)" }                 Else { $TimeZoneName         = ";TimeZoneName=" }
+            If ($WSUSServer)           { $WSUSServer           = "WSUSServer=$($WSUSServer)" }                     Else { $WSUSServer           = ";WSUSServer=" }
+            If ($UserLocale)           { $UserLocale           = "UserLocale=$($UserLocale)" }                     Else { $UserLocale           = ";UserLocale=" }
+            If ($KeyboardLocale)       { $KeyboardLocale       = "KeyboardLocale=$($KeyboardLocale)" }             Else { $KeyboardLocale       = ";KeyboardLocale=" }
+            If ($UILanguage)           { $UILanguage           = "UILanguage=$($UILanguage)" }                     Else { $UILanguage           = ";UILanguage=" }
+            If ($KeyboardLocalePE)     { $KeyboardLocalePE     = "KeyboardLocalePE=$($KeyboardLocalePE)" }         Else { $KeyboardLocalePE     = ";KeyboardLocalePE=" }
 
             If ($Name -eq "CustomSettingsIni")
             {
                 cMDTCustomSettingsIni ini {
-                    Ensure  = $Ensure
-                    Path    = $Path
-                    Content = @"
+                    Ensure    = $Ensure
+                    Path      = $Path
+                    DependsOn = "[cMDTDirectory]DeploymentFolder"
+                    Content   = @"
 [Settings]
 Priority=SetModelAlias, Init, ModelAlias, Default
 Properties=ModelAlias, ComputerSerialNumber
@@ -509,46 +623,46 @@ DoCapture=NO
 OSDComputerName=CLI%ComputerSerialNumber%
 
 ;Local admin password
-AdminPassword=$($Node.MDTLocalPassword)
+AdminPassword=$($Node.LocalAdminPassword)
 SLShare=%DeployRoot%\Logs
 
 OrgName=Company
-Home_Page=http://companyURL
+$($HomePage)
 
 ;Enable or disable options:
-SkipAdminPassword=NO
-SkipApplications=YES
-SkipBitLocker=NO
-SkipCapture=YES
-SkipComputerBackup=YES
-SkipComputerName=NO
-SkipDomainMembership=NO
-SkipFinalSummary=NO
-SkipLocaleSelection=NO
-SkipPackageDisplay=YES
-SkipProductKey=YES
-SkipRoles=YES
-SkipSummary=NO
-SkipTimeZone=NO
-SkipUserData=YES
-SkipTaskSequence=NO
+$($SkipAdminPassword)
+$($SkipApplications)
+$($SkipBitLocker)
+$($SkipCapture)
+$($SkipComputerBackup)
+$($SkipComputerName)
+$($SkipDomainMembership)
+$($SkipFinalSummary)
+$($SkipLocaleSelection)
+$($SkipPackageDisplay)
+$($SkipProductKey)
+$($SkipRoles)
+$($SkipSummary)
+$($SkipTimeZone)
+$($SkipUserData)
+$($SkipTaskSequence)
 
 ;DomainJoin
-JoinDomain=$($JoinDomain)
-DomainAdmin=$($DomainAdmin)
-DomainAdminDomain=$($DomainAdminDomain)
-DomainAdminPassword=$($DomainAdminPassword)
-MachineObjectOU=$($MachineObjectOU)
+$($JoinDomain)
+$($DomainAdmin)
+$($DomainAdminDomain)
+$($DomainAdminPassword)
+$($MachineObjectOU)
 
 ;TimeZone settings
-TimeZoneName=W. Europe Standard Time
+$($TimeZoneName)
 
-WSUSServer=http://fqdn:port
+$($WSUSServer)
 
 ;Example keyboard layout.
-UserLocale=en-US
-KeyboardLocale=en-US
-UILanguage=en-US
+$($UserLocale)
+$($KeyboardLocale)
+$($UILanguage)
 
 ;Drivers
 DriverSelectionProfile=Nothing
@@ -563,9 +677,10 @@ FinishAction=RESTART
             If ($Name -eq "BootstrapIni")
             {
                 cMDTBootstrapIni ini {
-                    Ensure  = $Ensure
-                    Path    = $Path
-                    Content = @"
+                    Ensure    = $Ensure
+                    Path      = $Path
+                    DependsOn = "[cMDTDirectory]DeploymentFolder"
+                    Content   = @"
 [Settings]
 Priority=Default
 
@@ -573,13 +688,13 @@ Priority=Default
 DeployRoot=\\$($Node.NodeName)\$($Node.PSDriveShareName)
 SkipBDDWelcome=YES
 
-;Kundunik lokal användare
+;MDT Connect Account
 UserID=$($Node.MDTLocalAccount)
 UserPassword=$($Node.MDTLocalPassword)
 UserDomain=$($env:COMPUTERNAME)
 
-;Swedish Keyboard Layout
-KeyboardLocalePE=041d:0000041d
+;Keyboard Layout
+$($KeyboardLocalePE)
 "@
                 }
             }
@@ -618,10 +733,12 @@ KeyboardLocalePE=041d:0000041d
                 ExtraDirectory          = $ExtraDirectory
                 BackgroundFile          = $BackgroundFile
                 LiteTouchWIMDescription = $LiteTouchWIMDescription
+                DependsOn               = "[cMDTDirectory]DeploymentFolder"
             }                    cWDSBootImage wdsBootImage {
                 Ensure    = $Ensure
                 Path      = $Path
                 ImageName = $ImageName
+                DependsOn = "[cMDTUpdateBootImage]updateBootImage"
             }
 
         }

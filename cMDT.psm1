@@ -72,7 +72,7 @@ class cMDTApplication
         { $targetdownload = "$($this.ApplicationSourcePath)_$($this.Version).zip" ; $download = $False }
         
         $extractfolder = "$($this.TempLocation)\$($foldername)"
-        $referencefile = "$($this.PSDrivePath)\Applications\$($this.Name)\$($this.ApplicationSourcePath.Split($separator)[-1]).version"
+        $referencefile = "$($this.PSDrivePath)\Applications\$($this.DestinationFolder)\$($this.ApplicationSourcePath.Split($separator)[-1]).version"
 
         if ($this.ensure -eq [Ensure]::Present)
         {
@@ -81,15 +81,30 @@ class cMDTApplication
             if ($present)
             {
 
-                If ($download) { Invoke-WebDownload -Source "$($this.ApplicationSourcePath)_$($this.Version).zip" -Target $targetdownload }
+                If ($download)
+                {
+                    Invoke-WebDownload -Source "$($this.ApplicationSourcePath)_$($this.Version).zip" -Target $targetdownload -Verbose
+                    $present = Invoke-TestPath -Path $targetdownload
+                    If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+                }
                 Invoke-ExpandArchive -Source $targetdownload -Target "$($this.PSDrivePath)\Applications\$($this.name)"
-                If ($download) { Invoke-RemovePath -Path $targetdownload }
+                If ($download)
+                { Invoke-RemovePath -Path $targetdownload }
             }
             else
             {
 
-                If ($download) { Invoke-WebDownload -Source "$($this.ApplicationSourcePath)_$($this.Version).zip" -Target $targetdownload }
+                If ($download)
+                {
+                    Invoke-WebDownload -Source "$($this.ApplicationSourcePath)_$($this.Version).zip" -Target $targetdownload -Verbose
+                    $present = Invoke-TestPath -Path $targetdownload
+                    If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+                }
+
                 Invoke-ExpandArchive -Source $targetdownload -Target $extractfolder
+                $present = Invoke-TestPath -Path $extractfolder
+                If (-not($present)) { Write-Error "Cannot find path '$extractfolder' because it does not exist." ; Return }
+
                 If ($download) { Invoke-RemovePath -Path $targetdownload }
 
                 $this.ImportApplication($extractfolder)
@@ -121,7 +136,7 @@ class cMDTApplication
         if (($present) -and ($this.ensure -eq [Ensure]::Present))
         {
 
-            $match = Compare-Version -Source "$($this.PSDrivePath)\Applications\$($this.Name)\$($this.ApplicationSourcePath.Split($separator)[-1]).version" -Target $this.Version
+            $match = Compare-Version -Source "$($this.PSDrivePath)\Applications\$($this.DestinationFolder)\$($this.ApplicationSourcePath.Split($separator)[-1]).version" -Target $this.Version
             if (-not ($match))
             {
                 Write-Verbose "$($this.Name) version has been updated on the pull server"
@@ -287,15 +302,29 @@ class cMDTCustomize
             if ($present)
             {
 
-                If ($download) { Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).zip" -Target $targetdownload }
-                if (-not $this.Protected) { Invoke-RemovePath -Path $referencefile }
+                If ($download)
+                {
+                    Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).zip" -Target $targetdownload -Verbose
+                    $present = Invoke-TestPath -Path $targetdownload
+                    If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+                }
+                if (-not $this.Protected)
+                {
+                    $present = Invoke-TestPath -Path $referencefile
+                    If ($present) { Invoke-RemovePath -Path $referencefile }
+                }
                 Invoke-ExpandArchive -Source $targetdownload -Target $extractfolder -Verbose
                 If ($download) { Invoke-RemovePath -Path $targetdownload }
                 if ($this.Protected) { New-ReferenceFile -Path $referencefile }
             }
             else
             {
-                If ($download) { Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).zip" -Target $targetdownload }
+                If ($download)
+                {
+                    Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).zip" -Target $targetdownload -Verbose
+                    $present = Invoke-TestPath -Path $targetdownload
+                    If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+                }
                 Invoke-ExpandArchive -Source $targetdownload -Target $extractfolder -Verbose
                 If ($download) { Invoke-RemovePath -Path $targetdownload }
                 New-ReferenceFile -Path $referencefile 
@@ -587,8 +616,17 @@ class cMDTDriver
             if ($present)
             {
 
-                If ($download) { Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).zip" -Target $targetdownload }
+                If ($download)
+                {
+                    Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).zip" -Target $targetdownload -Verbose
+                    $present = Invoke-TestPath -Path $targetdownload
+                    If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+                }
+                
                 Invoke-ExpandArchive -Source $targetdownload -Target $extractfolder
+                $present = Invoke-TestPath -Path $extractfolder
+                If (-not($present)) { Write-Error "Cannot find path '$extractfolder' because it does not exist." ; Return }
+
                 Invoke-RemovePath -Path "$($this.path)\$($this.name)" -PSDriveName $this.PSDriveName -PSDrivePath $this.PSDrivePath -Verbose
                 If ($download) { Invoke-RemovePath -Path $targetdownload }
 
@@ -599,8 +637,17 @@ class cMDTDriver
             else
             {
 
-                If ($download) { Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).zip" -Target $targetdownload }
+                If ($download)
+                {
+                    Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).zip" -Target $targetdownload -Verbose
+                    $present = Invoke-TestPath -Path $targetdownload
+                    If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+                }
+                
                 Invoke-ExpandArchive -Source $targetdownload -Target $extractfolder
+                $present = Invoke-TestPath -Path $extractfolder
+                If (-not($present)) { Write-Error "Cannot find path '$extractfolder' because it does not exist." ; Return }
+
                 If ($download) { Invoke-RemovePath -Path $targetdownload }
 
                 $this.ImportDriver($extractfolder)
@@ -755,20 +802,40 @@ class cMDTOperatingSystem
                 If ($Hash)
                 {
                     If ($download)
-                        {
-                            Invoke-WebDownload -Source "$($this.SourcePath).wim" -Target $targetdownload
-                            Invoke-WebDownload -Source "$($this.SourcePath).version" -Target $targetdownloadref
-                        }
+                    {
+
+                        Invoke-WebDownload -Source "$($this.SourcePath).wim" -Target $targetdownload -Verbose
+                        $present = Invoke-TestPath -Path $targetdownload
+                        If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+
+                        Invoke-WebDownload -Source "$($this.SourcePath).version" -Target $targetdownloadref
+                        $present = Invoke-TestPath -Path $targetdownloadref
+                        If (-not($present)) { Write-Error "Cannot find path '$targetdownloadref' because it does not exist." ; Return }
+
                     }
+                    Else
+                    {
+
+                        $present = Invoke-TestPath -Path $targetdownload
+                        If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+
+                    }
+                }
                 Else
                 {
                     If ($download)
                     {
-                        Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).wim" -Target $targetdownload
+
+                        Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).wim" -Target $targetdownload -Verbose
+                        $present = Invoke-TestPath -Path $targetdownload
+                        If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+
                     }
                 }
 
                 Invoke-RemovePath -Path "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim" -Verbose
+                $present = Invoke-TestPath -Path "$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim"
+                If ($present) { Write-Error "Could not remove path '$($this.PSDrivePath)\Operating Systems\$($this.Name)\$($this.SourcePath.Split($separator)[-1]).wim'." ; Return }
 
                 $oldname = $null
                 $newname = $null
@@ -818,12 +885,22 @@ class cMDTOperatingSystem
                 {
                     If ($Hash)
                     {
-                        Invoke-WebDownload -Source "$($this.SourcePath).wim" -Target $targetdownload
+
+                        Invoke-WebDownload -Source "$($this.SourcePath).wim" -Target $targetdownload -Verbose
+                        $present = Invoke-TestPath -Path $targetdownload
+                        If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+
                         Invoke-WebDownload -Source "$($this.SourcePath).version" -Target $targetdownloadref
+                        $present = Invoke-TestPath -Path $targetdownloadref
+                        If (-not($present)) { Write-Error "Cannot find path '$targetdownloadref' because it does not exist." ; Return }
+
                     }
                     Else
                     {
-                        Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).wim" -Target $targetdownload
+                        Invoke-WebDownload -Source "$($this.SourcePath)_$($this.Version).wim" -Target $targetdownload -Verbose
+                        $present = Invoke-TestPath -Path $targetdownload
+                        If (-not($present)) { Write-Error "Cannot find path '$targetdownload' because it does not exist." ; Return }
+
                     }
                     $this.ImportOperatingSystem($targetdownload)
                 }
@@ -855,6 +932,9 @@ class cMDTOperatingSystem
         {
 
             Invoke-RemovePath -Path "$($this.PSDrivePath)\Operating Systems\$($this.Name)" -PSDriveName $this.PSDriveName -PSDrivePath $this.PSDrivePath -Verbose
+            $present = Invoke-TestPath -Path "$($this.PSDrivePath)\Operating Systems\$($this.Name)"
+            If ($present) { Write-Error "Cannot find path '$($this.PSDrivePath)\Operating Systems\$($this.Name)' because it does not exist." }
+
         }
 
     }
@@ -876,7 +956,12 @@ class cMDTOperatingSystem
             Else
             { $targetdownloadref = "$($this.SourcePath).version" ; $download = $False }
 
-            If ($download) { Invoke-WebDownload -Source "$($this.SourcePath).version" -Target $targetdownloadref }
+            If ($download)
+            {
+                Invoke-WebDownload -Source "$($this.SourcePath).version" -Target $targetdownloadref
+                $present = Invoke-TestPath -Path $targetdownloadref
+                If (-not($present)) { Write-Error "Cannot find path '$targetdownloadref' because it does not exist." ; Exit }
+            }
             $this.version = Get-Content -Path $targetdownloadref
         }
 
@@ -935,8 +1020,7 @@ class cMDTOperatingSystem
                 
             }
         }
-}
-[DscResource()]
+}[DscResource()]
 class cMDTPersistentDrive
 {
 
@@ -1460,7 +1544,7 @@ class cMDTUpdateBootImage
         } -ArgumentList $jobArgs
 
         $job | Wait-Job -Timeout 900 
-        $timedOutJobs = Get-Job -Name UpdateMDTDeploymentShare | ? {$_.State -eq 'Running'} | Stop-Job -PassThru
+        $timedOutJobs = Get-Job -Name UpdateMDTDeploymentShare | Where-Object {$_.State -eq 'Running'} | Stop-Job -PassThru
 
         If ($timedOutJobs)
         {
@@ -1599,6 +1683,7 @@ class cWDSConfiguration
 Function Compare-Version
 {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [Parameter(Mandatory=$True)]
         [ValidateNotNullorEmpty()]
@@ -1627,6 +1712,7 @@ Function Import-MicrosoftDeploymentToolkitModule
 Function Invoke-ExpandArchive
 {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [Parameter(Mandatory=$True)]
         [ValidateNotNullorEmpty()]
@@ -1648,6 +1734,7 @@ Function Invoke-ExpandArchive
 Function Invoke-RemovePath
 {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [Parameter(Mandatory=$True)]
         [ValidateNotNullorEmpty()]
@@ -1679,6 +1766,7 @@ Function Invoke-RemovePath
 Function Invoke-TestPath
 {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [Parameter(Mandatory=$True)]
         [ValidateNotNullorEmpty()]
@@ -1714,6 +1802,7 @@ Function Invoke-TestPath
 Function Invoke-WebDownload
 {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [Parameter(Mandatory=$True)]
         [ValidateNotNullorEmpty()]
@@ -1723,20 +1812,26 @@ Function Invoke-WebDownload
         [string]$Target
     )
 
+    [bool]$Verbosity
+    If($PSBoundParameters.Verbose)
+    { $Verbosity = $True }
+    Else
+    { $Verbosity = $False }
+
     If ($Source -like "*/*")
     {
         If (Get-Service BITS | Where-Object {$_.status -eq "running"})
         {
 
-            Write-Verbose "Downloading file $($Source) via Background Intelligent Transfer Service"
+            If ($Verbosity) { Write-Verbose "Downloading file $($Source) via Background Intelligent Transfer Service" }
             Import-Module BitsTransfer -Verbose:$false
-            Start-BitsTransfer -Source $Source -Destination $Target -Verbose
+            Start-BitsTransfer -Source $Source -Destination $Target -Verbose:$Verbosity
             Remove-Module BitsTransfer -Verbose:$false
         }
         else
         {
 
-            Write-Verbose "Downloading file $($Source) via System.Net.WebClient"
+            If ($Verbosity) { Write-Verbose "Downloading file $($Source) via System.Net.WebClient" }
             $WebClient = New-Object System.Net.WebClient
             $WebClient.DownloadFile($Source, $Target)
         }
@@ -1745,13 +1840,13 @@ Function Invoke-WebDownload
     {
         If (Get-Service BITS | Where-Object {$_.status -eq "running"})
         {
-            Write-Verbose "Downloading file $($Source) via Background Intelligent Transfer Service"
+            If ($Verbosity) { Write-Verbose "Downloading file $($Source) via Background Intelligent Transfer Service" }
             Import-Module BitsTransfer -Verbose:$false
-            Start-BitsTransfer -Source $Source -Destination $Target -Verbose
+            Start-BitsTransfer -Source $Source -Destination $Target -Verbose:$Verbosity
         }
         Else
         {
-            Copy-Item $Source -Destination $Target -Force -Verbose
+            Copy-Item $Source -Destination $Target -Force -Verbose:$Verbosity
         }
     }
 }

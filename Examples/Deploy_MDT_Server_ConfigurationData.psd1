@@ -23,11 +23,14 @@
             Role               = "MDT Server"
 
             #SMB or web link to a pull server
-            SourcePath         = "c:\sources"
+            SourcePath         = "c:\Sources"
 
             #Local account to create for MDT
             MDTLocalAccount    = "SVCMDTConnect001"
             MDTLocalPassword   = "P@ssW0rD!"
+
+            #Client local administrator password on client
+            LocalAdminPassword   = "P@ssW0rD!"
 
             #Download and extraction temporary folder
             TempLocation       = "C:\Temp"
@@ -55,11 +58,47 @@
                 }
                 @{  
                     Ensure = "Present"
-                    Vendor = "Hewlett Packard."
+                    Vendor = "Hewlett Packard"
                 }
                 @{  
                     Ensure = "Present"
-                    Vendor = "Lenovo."
+                    Vendor = "Lenovo"
+                }
+            )
+
+            #MDT Application Folder Structure
+            ApplicationFolderStructure   = @(
+                @{  
+                    Ensure = "Present"
+                    Folder = "Core Applications"
+                    SubFolders   = @(
+                        @{  
+                            Ensure    = "Present"
+                            SubFolder = "Microsoft"
+                        }
+                        @{  
+                            Ensure    = "Present"
+                            SubFolder = "Adobe"
+                        }
+                        @{  
+                            Ensure    = "Present"
+                            SubFolder = "Apple"
+                        }
+                    )
+                }
+                @{  
+                    Ensure = "Present"
+                    Folder = "Driver Applications"
+                    SubFolders   = @(
+                        @{  
+                            Ensure    = "Present"
+                            SubFolder = "Lenovo"
+                        }
+                    )
+                }
+                @{  
+                    Ensure = "Present"
+                    Folder = "Common Applications"
                 }
             )
 
@@ -107,16 +146,17 @@
                     Ensure                = "Present"
                     Name                  = "Teamviewer"
                     Version               = "1.0.0.0"
-                    Path                  = "\Applications\Core Applications"
+                    Path                  = "\Applications\Common Applications"
                     ShortName             = "Teamviewer"
                     Publisher             = "Teamviewer"
                     Language              = "en-US"
                     CommandLine           = "install.cmd"
                     WorkingDirectory      = ".\"
                     ApplicationSourcePath = "/TeamViewer_Setup_sv"
-                    DestinationFolder     = "Teamviewer"
+                    DestinationFolder     = "Common Applications\Teamviewer"
                 }
             )
+            #>
 
             #Custom folder/files to add to the MDT
             CustomSettings   = @(
@@ -134,25 +174,47 @@
                     Protected  = $true
                 }
             )
-            #>
 
             #Custom settings and boot ini file management
             CustomizeIniFiles  = @(
                 @{  
-                    Ensure              = "Present"
-                    Name                = "CustomSettingsIni"
-                    Path                = "\Control\CustomSettings.ini"
-                    JoinDomain          = "ad.company.net"
-                    DomainAdmin         = "DomainJoinAccount"
-                    DomainAdminDomain   = "ad.company.net"
-                    DomainAdminPassword = "DomainJoinAccountPassword"
-                    MachineObjectOU     = "OU=Clients,OU=company,DC=ad,DC=company,DC=net"
+                    Ensure               = "Present"
+                    Name                 = "CustomSettingsIni"
+                    Path                 = "\Control\CustomSettings.ini"
+                    HomePage             = "http://companyURL"
+                    SkipAdminPassword    = "NO"
+                    SkipApplications     = "YES"
+                    SkipBitLocker        = "NO"
+                    SkipCapture          = "YES"
+                    SkipComputerBackup   = "YES"
+                    SkipComputerName     = "NO"
+                    SkipDomainMembership = "NO"
+                    SkipFinalSummary     = "NO"
+                    SkipLocaleSelection  = "NO"
+                    SkipPackageDisplay   = "YES"
+                    SkipProductKey       = "YES"
+                    SkipRoles            = "YES"
+                    SkipSummary          = "NO"
+                    SkipTimeZone         = "NO"
+                    SkipUserData         = "YES"
+                    SkipTaskSequence     = "NO"
+                    JoinDomain           = "ad.company.net"
+                    DomainAdmin          = "DomainJoinAccount"
+                    DomainAdminDomain    = "ad.company.net"
+                    DomainAdminPassword  = "DomainJoinAccountPassword"
+                    MachineObjectOU      = "OU=Clients,OU=company,DC=ad,DC=company,DC=net"
+                    TimeZoneName         = "W. Europe Standard Time"
+                    WSUSServer           = "http://fqdn:port"
+                    UserLocale           = "en-US"
+                    KeyboardLocale       = "en-US"
+                    UILanguage           = "en-US"
                 }
                 @{  
-                    Ensure     = "Present"
-                    Name       = "BootstrapIni"
-                    Path       = "\Control\Bootstrap.ini"
-                    DeployRoot = "\DeploymentShare$"
+                    Ensure           = "Present"
+                    Name             = "BootstrapIni"
+                    Path             = "\Control\Bootstrap.ini"
+                    DeployRoot       = "\DeploymentShare$"
+                    KeyboardLocalePE = "0411:E0010411"
                 }
             )
 

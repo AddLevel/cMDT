@@ -8,7 +8,7 @@ cMDT is a Powershell Module to help automize MDT server deployment and configura
   - Lifecycle management for all components
 
 ### Version
-1.0.0.2
+1.0.0.3
 
 ### Tech
 
@@ -17,6 +17,8 @@ cMDT uses a number of components and open resource kit modules. The following ar
 * [WMF5] - Windows Management Framework 5.0
 * [xSmbShare] - DSC Module available from Powershell Gallery
 * [PowerShellAccessControl] - DSC Module available from GitHub
+
+(If the folder name in the PowerShellAccessControl ZIP from GitHub is named with an "-master" ending rename folder to module name "PowerShellAccessControl" before installing)
 
 The following prerequisites can automatically be downloaded with the cMDT Module:
 * [MicrosoftDeploymentToolkit2013_x64] - Microsoft Deployment Toolkit (MDT) 2013 Update 1 (6.3.8330.1000)
@@ -145,12 +147,12 @@ Priority=Default
 DeployRoot=\\$($ComputerName)\DeploymentShare$
 SkipBDDWelcome=YES
 
-;Kundunik lokal användare
+;MDT Connect Account
 UserID=$($UserName)
 UserPassword=$($Password)
 UserDomain=$($env:COMPUTERNAME)
 
-;Swedish Keyboard Layout
+;Keyboard Layout
 KeyboardLocalePE=041d:0000041d
 "@
 }
